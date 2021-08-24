@@ -10,6 +10,18 @@ def get_data(nrows=10_000):
     return df
 
 
+def airport_trip(row):
+    if (round(row.pickup_latitude, 2) == 40.77) | (round(row.pickup_longitude, 2) == -73.872):
+        return "pu_laguardia"
+    elif (round(row.pickup_latitude, 2) == 40.64) | (round(row.pickup_latitude, 2) == -73.77):
+        return "pu_jfk"
+    elif (round(row.dropoff_latitude, 2) == 40.77) | (round(row.dropoff_latitude, 2) == -73.87):
+        return "do_laguardia"
+    elif (round(row.dropoff_latitude, 2) == 40.64) | (round(row.dropoff_latitude, 2) == -73.77):
+        return "do_jfk"
+    else:
+        return "non_airport_trip"
+
 def clean_data(df, test=False):
     df = df.dropna(how='any', axis='rows')
     df = df[(df.dropoff_latitude != 0) | (df.dropoff_longitude != 0)]
@@ -22,12 +34,13 @@ def clean_data(df, test=False):
     df = df[df["pickup_longitude"].between(left=-74.3, right=-72.9)]
     df = df[df["dropoff_latitude"].between(left=40, right=42)]
     df = df[df["dropoff_longitude"].between(left=-74, right=-72.9)]
+    df["airport_trip"] = df.apply(airport_trip, axis=1)
     return df
 
 def holdout(df):
     y = df.pop("fare_amount")
     X = df
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state = 42)
     return X, y, X_train, X_test, y_train, y_test
 
 if __name__ == '__main__':

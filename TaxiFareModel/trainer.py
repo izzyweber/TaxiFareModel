@@ -2,24 +2,28 @@ from ml_flow_test import EXPERIMENT_NAME
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso, ElasticNet, Ridge
 import numpy as np
 
 from TaxiFareModel.encoders import DistanceTransformer, TimeFeaturesEncoder
-from TaxiFareModel.data import get_data, clean_data, holdout
+from TaxiFareModel.data import airport_trip, get_data, clean_data, holdout
+
 import mlflow
 from mlflow.tracking import MlflowClient
 from memoized_property import memoized_property
+
+import joblib
 
 class Trainer():
     MLFLOW_URI = "https://mlflow.lewagon.co/"
     EXPERIMENT_NAME = "[[GB] [London] [izzyweber] TaxiFare + V1]"
 
-    def __init__(self, X, y):
+    def __init__(self, X, y, model):
         """
             X: pandas DataFrame
             y: pandas Series
         """
+        self.model = model
         self.pipeline = None
         self.X = X
         self.y = y
@@ -35,14 +39,18 @@ class Trainer():
             ('time_enc', TimeFeaturesEncoder('pickup_datetime')),
             ('ohe', OneHotEncoder(handle_unknown='ignore'))
         ])
+        cat_pipe = Pipeline([
+            ("ohe", OneHotEncoder(handle_unknown='ignore'))
+        ])
         preproc_pipe = ColumnTransformer([
             ('distance', dist_pipe, [
             "pickup_latitude", "pickup_longitude", 'dropoff_latitude', 'dropoff_longitude']),
-            ('time', time_pipe, ['pickup_datetime'])
+            ('time', time_pipe, ['pickup_datetime']),
+            ("cats", cat_pipe, ["airport_trip"])
         ], remainder="drop")
         pipe = Pipeline([
             ('preproc', preproc_pipe),
-            ('linear_model', LinearRegression())
+            ('linear_model', self.model)
         ])
         self.pipeline = pipe
         return pipe
@@ -80,13 +88,19 @@ class Trainer():
     def mlflow_log_metric(self, key, value):
         self.mlflow_client.log_metric(self.mlflow_run.info.run_id, key, value)
 
+    def save_model(self):
+        """ Save the trained model into a model.joblib file """
+        joblib.dump(self, 'model.joblib')
+        pass
 
 if __name__ == "__main__":
-    df = get_data()
-    df = clean_data(df)
-    X, y, X_train, X_test, y_train, y_test = holdout(df)
-    trainer = Trainer(X, y)
-    trainer.run(X_train, y_train)
-    trainer.mlflow_log_param("Estimator", "Linear")
-    trainer.mlflow_log_metric("RMFSE", trainer.evaluate(X_test, y_test))
-    print(f'Testing complete. Your RMSE was:{trainer.evaluate(X_test, y_test)}')
+        df = get_data()
+        df = clean_data(df)
+        X, y, X_train, X_test, y_train, y_test = holdout(df)
+        for model in [LinearRegression(), Lasso(), ElasticNet(), Ridge()]:
+            trainer = Trainer(X, y, model)
+            trainer.run(X_train, y_train)
+            trainer.mlflow_log_param("Estimator", model)
+            trainer.mlflow_log_metric("RMSE", trainer.evaluate(X_test, y_test))
+            trainer.save_model()
+            print(f'Testing complete for {model}. Your RMSE was:{trainer.evaluate(X_test, y_test)}')
