@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/izzy/code/izzyweber/TaxiFareModel/mlruns/1/7d409973ec274be5b84e7a404c714848/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '1'
+lifecycle_stage: active
+name: ''
+run_id: 7d409973ec274be5b84e7a404c714848
+run_uuid: 7d409973ec274be5b84e7a404c714848
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1629806421620
+status: 1
+tags: []
+user_id: unknown
